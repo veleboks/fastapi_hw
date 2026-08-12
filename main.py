@@ -3,6 +3,8 @@ from schemas import FeatureVectorChurn, DatasetRowChurn
 from contextlib import asynccontextmanager
 from dataset import load_dataset, info_dataset
 from preprocessing import PreparedDataset, prepare_dataset
+from training import evaluate_churn_model, train_churn_model
+from fastapi import HTTPException
 from pathlib import Path
 from typing import Any
 
@@ -41,3 +43,20 @@ def info() -> dict[str, Any]:
 def split_info() -> dict[str, Any]:
     split: PreparedDataset = app.state.split
     return split.split_info()
+
+
+@app.post("/model/train")
+def train_model() -> dict[str, float]:
+    dataset = getattr(app.state, "dataset", None)
+    if not dataset:
+        raise HTTPException(status_code=503, detail="dataset is not loaded or empty")
+
+    split: PreparedDataset = app.state.split
+    try:
+        model = train_churn_model(split.X_train, split.y_train)
+        metrics = evaluate_churn_model(model, split.X_test, split.y_test)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    app.state.model = model
+    return metrics
