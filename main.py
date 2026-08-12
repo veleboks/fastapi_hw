@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from schemas import FeatureVectorChurn, DatasetRowChurn
 from contextlib import asynccontextmanager
 from dataset import load_dataset, info_dataset
+from preprocessing import PreparedDataset, prepare_dataset
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ from typing import Any
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.dataset = load_dataset(Path("data/churn_dataset.csv"))
+    app.state.split = prepare_dataset(app.state.dataset)
     yield
 
 
@@ -33,3 +35,9 @@ def preview(n: int = 5) -> list[DatasetRowChurn]:
 @app.get("/dataset/info")
 def info() -> dict[str, Any]:
     return info_dataset(app.state.dataset)
+
+
+@app.get("/dataset/split-info")
+def split_info() -> dict[str, Any]:
+    split: PreparedDataset = app.state.split
+    return split.split_info()
