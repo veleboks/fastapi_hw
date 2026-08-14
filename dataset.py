@@ -1,7 +1,8 @@
 import csv
-from schemas import DatasetRowChurn
 from pathlib import Path
 from typing import Any
+
+from schemas import DatasetRowChurn
 
 
 def load_dataset(file_path: Path) -> list[DatasetRowChurn]:

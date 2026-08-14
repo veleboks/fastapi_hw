@@ -1,18 +1,21 @@
-from fastapi import FastAPI
-from schemas import FeatureVectorChurn, DatasetRowChurn
 from contextlib import asynccontextmanager
-from dataset import load_dataset, info_dataset
-from preprocessing import PreparedDataset, prepare_dataset
-from training import evaluate_churn_model, train_churn_model
-from fastapi import HTTPException
 from pathlib import Path
 from typing import Any
+
+from fastapi import FastAPI, HTTPException
+
+from dataset import info_dataset, load_dataset
+from model_storage import load_cached_model_bundle, ModelMetadata
+from preprocessing import PreparedDataset, prepare_dataset
+from schemas import DatasetRowChurn, FeatureVectorChurn
+from training import build_model_bundle
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.dataset = load_dataset(Path("data/churn_dataset.csv"))
     app.state.split = prepare_dataset(app.state.dataset)
+    app.state.model_bundle = load_cached_model_bundle()
     yield
 
 
@@ -53,10 +56,22 @@ def train_model() -> dict[str, float]:
 
     split: PreparedDataset = app.state.split
     try:
-        model = train_churn_model(split.X_train, split.y_train)
-        metrics = evaluate_churn_model(model, split.X_test, split.y_test)
+        bundle = build_model_bundle(
+            split.X_train, split.y_train, split.X_test, split.y_test
+        )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    app.state.model = model
-    return metrics
+    app.state.model_bundle = bundle
+
+    assert bundle.metadata.metrics is not None
+
+    return bundle.metadata.metrics
+
+
+@app.get("/model/status")
+def status() -> ModelMetadata:
+    bundle = app.state.model_bundle
+    if bundle is None:
+        raise HTTPException(status_code=503, detail="Model metadata is absent")
+    return app.state.model_bundle.metadata

@@ -7,7 +7,6 @@ from sklearn.model_selection import train_test_split
 
 from schemas import DatasetRowChurn
 
-
 NUMERIC_COLUMNS = [
     "monthly_fee",
     "usage_hours",
