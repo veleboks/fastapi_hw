@@ -6,9 +6,16 @@ from fastapi import FastAPI, HTTPException
 
 from dataset import info_dataset, load_dataset
 from model_storage import load_cached_model_bundle, ModelMetadata
+from model_inference import predict_single, predict_batch
 from preprocessing import PreparedDataset, prepare_dataset
-from schemas import DatasetRowChurn, FeatureVectorChurn
+from schemas import DatasetRowChurn, FeatureVectorChurn, PredictionResponseChurn
 from training import build_model_bundle
+import pandas as pd
+import logging
+from pydantic import TypeAdapter
+
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -16,6 +23,10 @@ async def lifespan(app: FastAPI):
     app.state.dataset = load_dataset(Path("data/churn_dataset.csv"))
     app.state.split = prepare_dataset(app.state.dataset)
     app.state.model_bundle = load_cached_model_bundle()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
     yield
 
 
@@ -28,8 +39,16 @@ def root() -> dict:
 
 
 @app.post("/predict")
-def predict(features: FeatureVectorChurn) -> FeatureVectorChurn:
-    return features
+def predict(
+    features: FeatureVectorChurn | list[FeatureVectorChurn],
+) -> PredictionResponseChurn | list[PredictionResponseChurn]:
+    bundle = app.state.model_bundle
+    if not bundle.metadata.trained:
+        raise HTTPException(status_code=503, detail="Model is not trained")
+
+    if isinstance(features, list):
+        return predict_batch(bundle, features)
+    return predict_single(bundle, features)
 
 
 @app.get("/dataset/preview")
