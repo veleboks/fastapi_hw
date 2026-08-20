@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 
 from dataset import info_dataset, load_dataset
+from exception_handlers import register_exception_handlers
 from model_inference import predict_batch, predict_single
 from model_storage import ModelMetadata, load_cached_model_bundle
 from preprocessing import (
@@ -16,19 +17,18 @@ from preprocessing import (
 )
 from schemas import (
     DatasetRowChurn,
+    ErrorResponse,
     FeatureVectorChurn,
     PredictionResponseChurn,
     TrainingConfigChurn,
 )
 from training import build_model_bundle
 
-logger = logging.getLogger(__name__)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.dataset = load_dataset(Path("data/churn_dataset.csv"))
-    app.state.split = prepare_dataset(app.state.dataset)
+    app.state.split = prepare_dataset(app.state.dataset) if app.state.dataset else None
     app.state.model_bundle = load_cached_model_bundle()
     logging.basicConfig(
         level=logging.INFO,
@@ -38,6 +38,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+register_exception_handlers(app)
 
 
 @app.get("/")
@@ -45,7 +46,43 @@ def root() -> dict:
     return {"message": "ml churn service is running"}
 
 
-@app.post("/predict")
+@app.post(
+    "/predict",
+    responses={
+        422: {
+            "model": ErrorResponse,
+            "description": "Invalid feature values or extra features",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Request validation failed",
+                        "details": [
+                            {
+                                "location": ["body", "monthly_fee"],
+                                "message": "Input should be a valid number",
+                                "type": "float_parsing",
+                            }
+                        ],
+                    }
+                }
+            },
+        },
+        503: {
+            "model": ErrorResponse,
+            "description": "Model is not trained",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": "HTTP_503",
+                        "message": "Model is not trained",
+                        "details": None,
+                    }
+                }
+            },
+        },
+    },
+)
 def predict(
     features: FeatureVectorChurn | list[FeatureVectorChurn],
 ) -> PredictionResponseChurn | list[PredictionResponseChurn]:
@@ -70,6 +107,8 @@ def info() -> dict[str, Any]:
 
 @app.get("/dataset/split-info")
 def split_info() -> dict[str, Any]:
+    if app.state.split is None:
+        raise HTTPException(status_code=503, detail="Dataset is empty")
     split: PreparedDataset = app.state.split
     return split.split_info()
 
@@ -91,7 +130,32 @@ def model_schema() -> dict[str, list[dict[str, str]]]:
     }
 
 
-@app.post("/model/train")
+@app.post(
+    "/model/train",
+    responses={
+        400: {
+            "model": ErrorResponse,
+            "description": "Training or hyperparameter error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": "PROCESSING_ERROR",
+                        "message": "Unable to process the request",
+                        "details": "Unknown training parameter",
+                    }
+                }
+            },
+        },
+        422: {
+            "model": ErrorResponse,
+            "description": "Invalid training configuration",
+        },
+        503: {
+            "model": ErrorResponse,
+            "description": "Dataset is empty or unavailable",
+        },
+    },
+)
 def train_model(config: TrainingConfigChurn | None = None) -> dict[str, float]:
     dataset = getattr(app.state, "dataset", None)
     if not dataset:
@@ -100,7 +164,9 @@ def train_model(config: TrainingConfigChurn | None = None) -> dict[str, float]:
     if config is None:
         config = TrainingConfigChurn()
 
-    split: PreparedDataset = app.state.split
+    split: PreparedDataset | None = app.state.split
+    if split is None:
+        raise HTTPException(status_code=503, detail="Dataset is empty")
     try:
         bundle = build_model_bundle(
             config, split.X_train, split.y_train, split.X_test, split.y_test

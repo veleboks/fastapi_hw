@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class FeatureVectorChurn(BaseModel):
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "examples": [
                 {
@@ -65,3 +66,9 @@ class ModelTypeChurn(str, Enum):
 class TrainingConfigChurn(BaseModel):
     model_type: ModelTypeChurn = ModelTypeChurn.LOGREG
     hyperparameters: dict[str, Any] = Field(default_factory=dict)
+
+
+class ErrorResponse(BaseModel):
+    code: str
+    message: str
+    details: Any | None = None
