@@ -1,4 +1,7 @@
-from pydantic import BaseModel, ConfigDict
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FeatureVectorChurn(BaseModel):
@@ -52,3 +55,13 @@ class PredictionResponseChurn(BaseModel):
 
     predicted_churn: int
     probabilities: dict[str, float]
+
+
+class ModelTypeChurn(str, Enum):
+    LOGREG = "logreg"
+    RANDOM_FOREST = "random_forest"
+
+
+class TrainingConfigChurn(BaseModel):
+    model_type: ModelTypeChurn = ModelTypeChurn.LOGREG
+    hyperparameters: dict[str, Any] = Field(default_factory=dict)

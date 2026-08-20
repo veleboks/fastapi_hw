@@ -1,9 +1,10 @@
-from schemas import FeatureVectorChurn, PredictionResponseChurn
-from model_storage import ModelBundle
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
+from numpy.typing import NDArray
 from pydantic import TypeAdapter
+
+from model_storage import ModelBundle
+from schemas import FeatureVectorChurn, PredictionResponseChurn
 
 
 def _make_prediction_response(

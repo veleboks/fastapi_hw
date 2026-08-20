@@ -5,11 +5,14 @@ from typing import Any
 
 import joblib
 
+from schemas import TrainingConfigChurn
+
 CACHED_MODEL_FILEPATH = Path("artifacts/models/cached_model.joblib")
 
 
 @dataclass
 class ModelMetadata:
+    config: TrainingConfigChurn | None = None
     trained: bool = False
     trained_at: datetime | None = None
     metrics: dict[str, float] | None = None

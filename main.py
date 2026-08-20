@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -5,15 +6,17 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 
 from dataset import info_dataset, load_dataset
-from model_storage import load_cached_model_bundle, ModelMetadata
-from model_inference import predict_single, predict_batch
+from model_inference import predict_batch, predict_single
+from model_storage import ModelMetadata, load_cached_model_bundle
 from preprocessing import PreparedDataset, prepare_dataset
-from schemas import DatasetRowChurn, FeatureVectorChurn, PredictionResponseChurn
+from schemas import (
+    DatasetRowChurn,
+    FeatureVectorChurn,
+    PredictionResponseChurn,
+    TrainingConfigChurn,
+)
 from training import build_model_bundle
-import pandas as pd
-import logging
-from pydantic import TypeAdapter
-
+from registry import MODEL_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -68,17 +71,24 @@ def split_info() -> dict[str, Any]:
 
 
 @app.post("/model/train")
-def train_model() -> dict[str, float]:
+def train_model(config: TrainingConfigChurn | None = None) -> dict[str, float]:
     dataset = getattr(app.state, "dataset", None)
     if not dataset:
         raise HTTPException(status_code=503, detail="dataset is not loaded or empty")
 
+    if config is None:
+        config = TrainingConfigChurn()
+
     split: PreparedDataset = app.state.split
     try:
         bundle = build_model_bundle(
-            split.X_train, split.y_train, split.X_test, split.y_test
+            config, split.X_train, split.y_train, split.X_test, split.y_test
         )
     except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except KeyError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except TypeError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
     app.state.model_bundle = bundle
