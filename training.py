@@ -9,8 +9,8 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from model_storage import ModelBundle, ModelMetadata, dump_model_bundle
 from preprocessing import CATEGORICAL_COLUMNS, NUMERIC_COLUMNS
-from schemas import TrainingConfigChurn
 from registry import get_registry_entry
+from schemas import TrainingConfigChurn
 
 
 def _build_training_pipeline(config: TrainingConfigChurn) -> Pipeline:

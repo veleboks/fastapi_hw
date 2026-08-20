@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 import pandas as pd
-from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 
 from schemas import DatasetRowChurn
@@ -16,6 +15,7 @@ NUMERIC_COLUMNS = [
     "autopay_enabled",
 ]
 CATEGORICAL_COLUMNS = ["region", "device_type", "payment_method"]
+FEATURE_COLUMNS = NUMERIC_COLUMNS + CATEGORICAL_COLUMNS
 TARGET_COLUMN = "churn"
 
 
@@ -49,7 +49,7 @@ def prepare_dataset(
     random_state: int = 42,
 ) -> PreparedDataset:
     frame = pd.DataFrame([row.model_dump() for row in dataset])
-    X = frame.drop(columns=[TARGET_COLUMN])
+    X = frame[FEATURE_COLUMNS]
     y = frame[TARGET_COLUMN]
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state, stratify=y
@@ -60,17 +60,6 @@ def prepare_dataset(
     X_test = cast(pd.DataFrame, X_test).copy()
     y_train = cast(pd.Series, y_train)
     y_test = cast(pd.Series, y_test)
-
-    numeric_imputer = SimpleImputer(strategy="median")
-    categorical_imputer = SimpleImputer(strategy="most_frequent")
-    X_train[NUMERIC_COLUMNS] = numeric_imputer.fit_transform(X_train[NUMERIC_COLUMNS])
-    X_test[NUMERIC_COLUMNS] = numeric_imputer.transform(X_test[NUMERIC_COLUMNS])
-    X_train[CATEGORICAL_COLUMNS] = categorical_imputer.fit_transform(
-        X_train[CATEGORICAL_COLUMNS]
-    )
-    X_test[CATEGORICAL_COLUMNS] = categorical_imputer.transform(
-        X_test[CATEGORICAL_COLUMNS]
-    )
 
     return PreparedDataset(
         X_train=X_train,

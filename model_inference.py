@@ -4,11 +4,12 @@ from numpy.typing import NDArray
 from pydantic import TypeAdapter
 
 from model_storage import ModelBundle
+from preprocessing import FEATURE_COLUMNS
 from schemas import FeatureVectorChurn, PredictionResponseChurn
 
 
 def _make_prediction_response(
-    classes: list[int], probas: NDArray[np.float64]
+    classes: NDArray[np.int_], probas: NDArray[np.float64]
 ) -> PredictionResponseChurn:
     classes_str = [str(x) for x in classes]
     return PredictionResponseChurn(
@@ -22,6 +23,7 @@ def predict_single(
 ) -> PredictionResponseChurn:
     type_adapter = TypeAdapter(list[FeatureVectorChurn])
     X = pd.DataFrame(type_adapter.dump_python([features]))
+    X = X.reindex(columns=FEATURE_COLUMNS)
 
     assert bundle.model is not None
     proba = bundle.model.predict_proba(X)[0]
@@ -35,6 +37,7 @@ def predict_batch(
 ) -> list[PredictionResponseChurn]:
     type_adapter = TypeAdapter(list[FeatureVectorChurn])
     X = pd.DataFrame(type_adapter.dump_python(features))
+    X = X.reindex(columns=FEATURE_COLUMNS)
 
     assert bundle.model is not None
     probas = bundle.model.predict_proba(X)

@@ -8,7 +8,12 @@ from fastapi import FastAPI, HTTPException
 from dataset import info_dataset, load_dataset
 from model_inference import predict_batch, predict_single
 from model_storage import ModelMetadata, load_cached_model_bundle
-from preprocessing import PreparedDataset, prepare_dataset
+from preprocessing import (
+    CATEGORICAL_COLUMNS,
+    NUMERIC_COLUMNS,
+    PreparedDataset,
+    prepare_dataset,
+)
 from schemas import (
     DatasetRowChurn,
     FeatureVectorChurn,
@@ -16,7 +21,6 @@ from schemas import (
     TrainingConfigChurn,
 )
 from training import build_model_bundle
-from registry import MODEL_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +72,23 @@ def info() -> dict[str, Any]:
 def split_info() -> dict[str, Any]:
     split: PreparedDataset = app.state.split
     return split.split_info()
+
+
+@app.get("/model/schema")
+def model_schema() -> dict[str, list[dict[str, str]]]:
+    def describe(columns: list[str]) -> list[dict[str, str]]:
+        return [
+            {
+                "name": name,
+                "type": FeatureVectorChurn.model_fields[name].annotation.__name__,
+            }
+            for name in columns
+        ]
+
+    return {
+        "numeric": describe(NUMERIC_COLUMNS),
+        "categorical": describe(CATEGORICAL_COLUMNS),
+    }
 
 
 @app.post("/model/train")
