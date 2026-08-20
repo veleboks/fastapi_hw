@@ -44,9 +44,7 @@ class PreparedDataset:
 
 
 def prepare_dataset(
-    dataset: list[DatasetRowChurn],
-    test_size: float = 0.2,
-    random_state: int = 42,
+    dataset: list[DatasetRowChurn], test_size: float = 0.2, random_state: int = 42
 ) -> PreparedDataset:
     frame = pd.DataFrame([row.model_dump() for row in dataset])
     X = frame[FEATURE_COLUMNS]
@@ -54,18 +52,11 @@ def prepare_dataset(
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state, stratify=y
     )
-    # При DataFrame/Series на входе это именно DataFrame/Series, но stubs
-    # scikit-learn описывают возвращаемые значения шире.
-    X_train = cast(pd.DataFrame, X_train).copy()
-    X_test = cast(pd.DataFrame, X_test).copy()
-    y_train = cast(pd.Series, y_train)
-    y_test = cast(pd.Series, y_test)
-
     return PreparedDataset(
-        X_train=X_train,
-        X_test=X_test,
-        y_train=y_train,
-        y_test=y_test,
+        X_train=cast(pd.DataFrame, X_train).copy(),
+        X_test=cast(pd.DataFrame, X_test).copy(),
+        y_train=cast(pd.Series, y_train),
+        y_test=cast(pd.Series, y_test),
         numeric_columns=NUMERIC_COLUMNS,
         categorical_columns=CATEGORICAL_COLUMNS,
     )

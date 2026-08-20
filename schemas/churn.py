@@ -22,7 +22,7 @@ class FeatureVectorChurn(BaseModel):
                     "autopay_enabled": 1,
                 }
             ]
-        }
+        },
     )
 
     monthly_fee: float
@@ -46,10 +46,7 @@ class PredictionResponseChurn(BaseModel):
             "examples": [
                 {
                     "predicted_churn": 0,
-                    "probabilities": {
-                        "0": 0.84,
-                        "1": 0.16,
-                    },
+                    "probabilities": {"0": 0.84, "1": 0.16},
                 }
             ]
         }
@@ -67,12 +64,6 @@ class ModelTypeChurn(str, Enum):
 class TrainingConfigChurn(BaseModel):
     model_type: ModelTypeChurn = ModelTypeChurn.LOGREG
     hyperparameters: dict[str, Any] = Field(default_factory=dict)
-
-
-class ErrorResponse(BaseModel):
-    code: str
-    message: str
-    details: Any | None = None
 
 
 class TrainingHistoryRecord(BaseModel):

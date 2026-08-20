@@ -16,11 +16,7 @@ def _error_response(
     message: str,
     details: Any = None,
 ) -> JSONResponse:
-    payload = ErrorResponse(
-        code=code,
-        message=message,
-        details=details,
-    )
+    payload = ErrorResponse(code=code, message=message, details=details)
     return JSONResponse(
         status_code=status_code,
         content=payload.model_dump(mode="json"),
@@ -31,10 +27,10 @@ async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
     return _error_response(
-        status_code=422,
-        code="VALIDATION_ERROR",
-        message="Request validation failed",
-        details=[
+        422,
+        "VALIDATION_ERROR",
+        "Request validation failed",
+        [
             {
                 "location": error["loc"],
                 "message": error["msg"],
@@ -45,31 +41,18 @@ async def validation_exception_handler(
     )
 
 
-async def http_exception_handler(
-    request: Request, exc: HTTPException
-) -> JSONResponse:
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     if isinstance(exc.detail, str):
-        message = exc.detail
-        details = None
+        message, details = exc.detail, None
     else:
-        message = "Request failed"
-        details = exc.detail
-
-    return _error_response(
-        status_code=exc.status_code,
-        code=f"HTTP_{exc.status_code}",
-        message=message,
-        details=details,
-    )
+        message, details = "Request failed", exc.detail
+    return _error_response(exc.status_code, f"HTTP_{exc.status_code}", message, details)
 
 
 async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
     logger.exception("Request processing failed")
     return _error_response(
-        status_code=400,
-        code="PROCESSING_ERROR",
-        message="Unable to process the request",
-        details=str(exc),
+        400, "PROCESSING_ERROR", "Unable to process the request", str(exc)
     )
 
 
@@ -77,11 +60,7 @@ async def unexpected_exception_handler(
     request: Request, exc: Exception
 ) -> JSONResponse:
     logger.exception("Unexpected server error")
-    return _error_response(
-        status_code=500,
-        code="INTERNAL_ERROR",
-        message="Internal server error",
-    )
+    return _error_response(500, "INTERNAL_ERROR", "Internal server error")
 
 
 def register_exception_handlers(app: FastAPI) -> None:
