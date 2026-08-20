@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -72,3 +73,15 @@ class ErrorResponse(BaseModel):
     code: str
     message: str
     details: Any | None = None
+
+
+class TrainingHistoryRecord(BaseModel):
+    timestamp: datetime
+    model_type: ModelTypeChurn
+    hyperparameters: dict[str, Any]
+    metrics: dict[str, float]
+
+
+class MetricsHistoryResponse(BaseModel):
+    latest: TrainingHistoryRecord | None
+    history: list[TrainingHistoryRecord]

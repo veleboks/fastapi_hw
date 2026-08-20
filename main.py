@@ -3,10 +3,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 
 from dataset import info_dataset, load_dataset
 from exception_handlers import register_exception_handlers
+from model_history import append_training_record, load_training_history
 from model_inference import predict_batch, predict_single
 from model_storage import ModelMetadata, load_cached_model_bundle
 from preprocessing import (
@@ -19,8 +20,11 @@ from schemas import (
     DatasetRowChurn,
     ErrorResponse,
     FeatureVectorChurn,
+    MetricsHistoryResponse,
+    ModelTypeChurn,
     PredictionResponseChurn,
     TrainingConfigChurn,
+    TrainingHistoryRecord,
 )
 from training import build_model_bundle
 
@@ -180,9 +184,37 @@ def train_model(config: TrainingConfigChurn | None = None) -> dict[str, float]:
 
     app.state.model_bundle = bundle
 
+    if bundle.metadata.config is None or bundle.metadata.trained_at is None:
+        raise HTTPException(status_code=500, detail="Model metadata is incomplete")
+
+    append_training_record(
+        TrainingHistoryRecord(
+            timestamp=bundle.metadata.trained_at,
+            model_type=bundle.metadata.config.model_type,
+            hyperparameters=bundle.metadata.config.hyperparameters,
+            metrics=bundle.metadata.metrics or {},
+        )
+    )
+
     assert bundle.metadata.metrics is not None
 
     return bundle.metadata.metrics
+
+
+@app.get("/model/metrics", response_model=MetricsHistoryResponse)
+def model_metrics(
+    model_type: ModelTypeChurn | None = None,
+    limit: int = Query(default=10, ge=1, le=100),
+) -> MetricsHistoryResponse:
+    history = load_training_history()
+    if model_type is not None:
+        history = [record for record in history if record.model_type == model_type]
+
+    recent_history = list(reversed(history))[:limit]
+    return MetricsHistoryResponse(
+        latest=recent_history[0] if recent_history else None,
+        history=recent_history,
+    )
 
 
 @app.get("/model/status")
