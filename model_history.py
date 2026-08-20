@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
+from threading import Lock
 
 from schemas import TrainingHistoryRecord
 
 TRAINING_HISTORY_FILEPATH = Path("artifacts/models/training_history.json")
+_HISTORY_LOCK = Lock()
 
 
 def load_training_history() -> list[TrainingHistoryRecord]:
@@ -15,17 +17,18 @@ def load_training_history() -> list[TrainingHistoryRecord]:
 
 
 def append_training_record(record: TrainingHistoryRecord) -> None:
-    history = load_training_history()
-    history.append(record)
+    with _HISTORY_LOCK:
+        history = load_training_history()
+        history.append(record)
 
-    TRAINING_HISTORY_FILEPATH.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = TRAINING_HISTORY_FILEPATH.with_suffix(".tmp")
-    temporary_path.write_text(
-        json.dumps(
-            [item.model_dump(mode="json") for item in history],
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-    temporary_path.replace(TRAINING_HISTORY_FILEPATH)
+        TRAINING_HISTORY_FILEPATH.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = TRAINING_HISTORY_FILEPATH.with_suffix(".tmp")
+        temporary_path.write_text(
+            json.dumps(
+                [item.model_dump(mode="json") for item in history],
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        temporary_path.replace(TRAINING_HISTORY_FILEPATH)
