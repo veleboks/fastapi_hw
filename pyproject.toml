@@ -3,18 +3,19 @@ name = "fastapi-hw"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.141.1",
+    "fastapi==0.115.6",
     "pandas>=3.0.5",
     "pydantic>=2.13.4",
     "ruff>=0.16.3",
     "scikit-learn>=1.9.0",
-    "starlette>=0.46,<1.0",
+    "starlette==0.41.3",
     "uvicorn[standard]>=0.52.1",
 ]
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
+    "anyio==4.8.0",
+    "httpx==0.28.1",
     "pytest>=9.1.1",
 ]
 
