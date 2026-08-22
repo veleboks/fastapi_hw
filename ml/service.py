@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 from ml.history import JsonTrainingHistoryRepository
@@ -10,6 +11,8 @@ from ml.preprocessing import (
 from ml.storage import JoblibModelRepository, ModelBundle
 from ml.training import ModelTrainer
 from schemas import (
+    ChurnHealth,
+    ChurnHealthStatus,
     DatasetRowChurn,
     FeatureVectorChurn,
     MetricsHistoryResponse,
@@ -18,6 +21,8 @@ from schemas import (
     TrainingConfigChurn,
     TrainingHistoryRecord,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -87,7 +92,7 @@ class ChurnModelService:
             return [
                 {
                     "name": name,
-                    "type": FeatureVectorChurn.model_fields[name].annotation.__name__,
+                    "type": FeatureVectorChurn.model_fields[name].annotation.__name__,  # pyright: ignore[reportOptionalMemberAccess]
                 }
                 for name in columns
             ]
@@ -96,3 +101,25 @@ class ChurnModelService:
             "numeric": describe(NUMERIC_COLUMNS),
             "categorical": describe(CATEGORICAL_COLUMNS),
         }
+
+    def health(self) -> ChurnHealth:
+        dataset_loaded = bool(self.dataset) and self.split is not None
+        model_loaded = (
+            self.model_bundle.model is not None and self.model_bundle.metadata.trained
+        )
+        status = (
+            ChurnHealthStatus.OK
+            if dataset_loaded and model_loaded
+            else ChurnHealthStatus.DEGRADED
+        )
+        logger.info(
+            "Health check: status=%s dataset_loaded=%s model_loaded=%s",
+            status.value,
+            dataset_loaded,
+            model_loaded,
+        )
+        return ChurnHealth(
+            status=status,
+            dataset_loaded=dataset_loaded,
+            model_loaded=model_loaded,
+        )

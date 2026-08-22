@@ -76,3 +76,14 @@ class TrainingHistoryRecord(BaseModel):
 class MetricsHistoryResponse(BaseModel):
     latest: TrainingHistoryRecord | None
     history: list[TrainingHistoryRecord]
+
+
+class ChurnHealthStatus(str, Enum):
+    OK = "ok"
+    DEGRADED = "degraded"
+
+
+class ChurnHealth(BaseModel):
+    status: ChurnHealthStatus
+    dataset_loaded: bool
+    model_loaded: bool

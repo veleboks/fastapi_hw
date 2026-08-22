@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 
 import pytest
@@ -158,3 +159,28 @@ def test_service_rejects_prediction_without_trained_model(tmp_path):
 
     with pytest.raises(ValueError, match="Model is not trained"):
         service.predict(feature)
+
+
+def test_service_health_reports_ready_and_degraded_states(tmp_path):
+    ready_service = make_service(tmp_path / "ready", make_dataset())
+    ready_service.model_bundle = ModelBundle(
+        model=object(), metadata=ModelMetadata(trained=True)
+    )
+    degraded_service = make_service(tmp_path / "degraded", make_dataset())
+
+    assert ready_service.health().status.value == "ok"
+    assert ready_service.health().dataset_loaded is True
+    assert ready_service.health().model_loaded is True
+    assert degraded_service.health().status.value == "degraded"
+    assert degraded_service.health().model_loaded is False
+
+
+def test_service_health_writes_state_to_log(tmp_path, caplog):
+    service = make_service(tmp_path, make_dataset())
+
+    with caplog.at_level(logging.INFO, logger="ml.service"):
+        service.health()
+
+    assert "Health check:" in caplog.text
+    assert "dataset_loaded=True" in caplog.text
+    assert "model_loaded=False" in caplog.text

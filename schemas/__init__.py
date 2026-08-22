@@ -1,4 +1,6 @@
 from .churn import (
+    ChurnHealth,
+    ChurnHealthStatus,
     DatasetRowChurn,
     FeatureVectorChurn,
     MetricsHistoryResponse,
@@ -10,6 +12,8 @@ from .churn import (
 from .errors import ErrorResponse
 
 __all__ = [
+    "ChurnHealth",
+    "ChurnHealthStatus",
     "DatasetRowChurn",
     "ErrorResponse",
     "FeatureVectorChurn",

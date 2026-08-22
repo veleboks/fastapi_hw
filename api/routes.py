@@ -95,3 +95,8 @@ def model_metrics(
 @router.get("/model/status")
 def model_status(service: ModelService):
     return service.model_bundle.metadata
+
+
+@router.get("/health")
+def service_health(service: ModelService):
+    return service.health()
