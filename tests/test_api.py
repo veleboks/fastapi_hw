@@ -80,6 +80,30 @@ def test_predict_validation_error_has_common_format(client):
     assert response.json()["details"]
 
 
+def test_predict_accepts_null_feature_values(client):
+    client.post("/model/train")
+    payload = {
+        **VALID_FEATURES,
+        "monthly_fee": None,
+        "region": None,
+    }
+
+    response = client.post("/predict", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["predicted_churn"] in {0, 1}
+
+
+def test_predict_rejects_all_null_features(client):
+    response = client.post(
+        "/predict",
+        json={name: None for name in VALID_FEATURES},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "VALIDATION_ERROR"
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

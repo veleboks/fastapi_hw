@@ -3,7 +3,7 @@ import pandas as pd
 from numpy.typing import NDArray
 from pydantic import TypeAdapter
 
-from ml.preprocessing import FEATURE_COLUMNS
+from ml.preprocessing import FEATURE_COLUMNS, NUMERIC_COLUMNS
 from ml.storage import ModelBundle
 from schemas import FeatureVectorChurn, PredictionResponseChurn
 
@@ -21,7 +21,11 @@ def _make_prediction_response(
 def _features_to_frame(features: list[FeatureVectorChurn]) -> pd.DataFrame:
     adapter = TypeAdapter(list[FeatureVectorChurn])
     frame = pd.DataFrame(adapter.dump_python(features))
-    return frame.reindex(columns=FEATURE_COLUMNS)
+    frame = frame.reindex(columns=FEATURE_COLUMNS)
+    frame[NUMERIC_COLUMNS] = frame[NUMERIC_COLUMNS].apply(
+        pd.to_numeric, errors="coerce"
+    )
+    return frame
 
 
 def predict_single(

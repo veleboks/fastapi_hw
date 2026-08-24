@@ -1,5 +1,7 @@
 import logging
 from dataclasses import dataclass
+from types import NoneType
+from typing import get_args
 
 from ml.history import JsonTrainingHistoryRepository
 from ml.inference import predict_batch, predict_single
@@ -88,11 +90,18 @@ class ChurnModelService:
         )
 
     def schema(self) -> dict[str, list[dict[str, str]]]:
+        def type_name(annotation: object) -> str:
+            types = get_args(annotation) or (annotation,)
+            return " | ".join(
+                "null" if item is NoneType else getattr(item, "__name__", str(item))
+                for item in types
+            )
+
         def describe(columns: list[str]) -> list[dict[str, str]]:
             return [
                 {
                     "name": name,
-                    "type": FeatureVectorChurn.model_fields[name].annotation.__name__,  # pyright: ignore[reportOptionalMemberAccess]
+                    "type": type_name(FeatureVectorChurn.model_fields[name].annotation),
                 }
                 for name in columns
             ]

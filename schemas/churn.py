@@ -1,8 +1,8 @@
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class RegionChurn(str, Enum):
@@ -44,19 +44,34 @@ class FeatureVectorChurn(BaseModel):
         },
     )
 
-    monthly_fee: float
-    usage_hours: float
-    support_requests: int
-    account_age_months: int
-    failed_payments: int
-    region: RegionChurn
-    device_type: DeviceTypeChurn
-    payment_method: PaymentMethodChurn
-    autopay_enabled: int = Field(ge=0, le=1)
+    monthly_fee: float | None
+    usage_hours: float | None
+    support_requests: int | None
+    account_age_months: int | None
+    failed_payments: int | None
+    region: RegionChurn | None
+    device_type: DeviceTypeChurn | None
+    payment_method: PaymentMethodChurn | None
+    autopay_enabled: int | None = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def require_at_least_one_feature(self) -> Self:
+        if all(value is None for value in self.model_dump().values()):
+            raise ValueError("At least one feature must be provided")
+        return self
 
 
-class DatasetRowChurn(FeatureVectorChurn):
-    churn: int
+class DatasetRowChurn(BaseModel):
+    monthly_fee: float | None = None
+    usage_hours: float | None = None
+    support_requests: int | None = None
+    account_age_months: int | None = None
+    failed_payments: int | None = None
+    region: RegionChurn | None = None
+    device_type: DeviceTypeChurn | None = None
+    payment_method: PaymentMethodChurn | None = None
+    autopay_enabled: int | None = Field(default=None, ge=0, le=1)
+    churn: int = Field(ge=0, le=1)
 
 
 class PredictionResponseChurn(BaseModel):

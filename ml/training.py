@@ -4,8 +4,9 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score, f1_score
+from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler, TargetEncoder
 
 from ml.preprocessing import CATEGORICAL_COLUMNS, NUMERIC_COLUMNS, PreparedDataset
 from ml.registry import create_model
@@ -15,12 +16,21 @@ from schemas import TrainingConfigChurn
 
 def build_training_pipeline(config: TrainingConfigChurn) -> Pipeline:
     numeric_pipeline = Pipeline(
-        [("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())]
+        [("imputer", SimpleImputer(strategy="mean")), ("scaler", StandardScaler())]
     )
     categorical_pipeline = Pipeline(
         [
-            ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("encoder", OneHotEncoder(handle_unknown="ignore")),
+            (
+                "encoder",
+                TargetEncoder(
+                    target_type="binary",
+                    cv=StratifiedKFold(
+                        n_splits=5,
+                        shuffle=True,
+                        random_state=42,
+                    ),
+                ),
+            ),
         ]
     )
     preprocessor = ColumnTransformer(

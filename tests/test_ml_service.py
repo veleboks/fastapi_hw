@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from ml.dataset import load_dataset
 from ml.history import JsonTrainingHistoryRepository
 from ml.preprocessing import (
     CATEGORICAL_COLUMNS,
@@ -88,6 +89,38 @@ def test_model_trainer_returns_metrics():
     assert bundle.metadata.trained is True
     assert set(bundle.metadata.metrics or {}) == {"accuracy", "f1"}
     assert bundle.model is not None
+
+
+def test_training_handles_missing_values_without_target_leakage():
+    dataset = make_dataset()
+    dataset[0] = dataset[0].model_copy(update={"monthly_fee": None, "region": None})
+    split = prepare_dataset(dataset)
+
+    bundle = ModelTrainer().train(TrainingConfigChurn(), split)
+    preprocessor = bundle.model.named_steps["preprocessor"]
+    numeric_pipeline = preprocessor.named_transformers_["numeric"]
+    categorical_pipeline = preprocessor.named_transformers_["categorical"]
+    encoder = categorical_pipeline.named_steps["encoder"]
+
+    assert numeric_pipeline.named_steps["imputer"].strategy == "mean"
+    assert encoder.cv.n_splits == 5
+    assert encoder.cv.shuffle is True
+    assert encoder.cv.random_state == 42
+
+
+def test_load_dataset_converts_empty_features_to_missing_values(tmp_path):
+    dataset_path = tmp_path / "churn.csv"
+    dataset_path.write_text(
+        "monthly_fee,usage_hours,support_requests,account_age_months,"
+        "failed_payments,region,device_type,payment_method,autopay_enabled,churn\n"
+        ",120,2,18,0,,mobile,card,1,0\n",
+        encoding="utf-8",
+    )
+
+    row = load_dataset(dataset_path)[0]
+
+    assert row.monthly_fee is None
+    assert row.region is None
 
 
 def test_model_repository_saves_and_loads_bundle(tmp_path):
