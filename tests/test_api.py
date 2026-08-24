@@ -129,3 +129,22 @@ def test_model_schema_is_available(client):
     assert response.status_code == 200
     assert len(body["numeric"]) == 6
     assert len(body["categorical"]) == 3
+
+
+def test_dataset_endpoints_return_503_for_empty_dataset(tmp_path):
+    service = make_service(tmp_path, [])
+    test_app = FastAPI()
+    register_exception_handlers(test_app)
+    test_app.include_router(router)
+    test_app.dependency_overrides[get_model_service] = lambda: service
+
+    with TestClient(test_app) as test_client:
+        responses = [
+            test_client.get("/dataset/preview"),
+            test_client.get("/dataset/info"),
+            test_client.get("/dataset/split-info"),
+            test_client.post("/model/train"),
+        ]
+
+    assert all(response.status_code == 503 for response in responses)
+    assert all(response.json()["code"] == "HTTP_503" for response in responses)

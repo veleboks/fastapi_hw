@@ -15,6 +15,11 @@ from schemas import (
 router = APIRouter()
 
 
+def require_dataset(service: ModelService) -> None:
+    if not service.dataset:
+        raise HTTPException(status_code=503, detail="Dataset is empty or unavailable")
+
+
 @router.get("/")
 def root() -> dict[str, str]:
     return {"message": "ml churn service is running"}
@@ -41,16 +46,19 @@ def dataset_preview(
     service: ModelService,
     n: int = 5,
 ):
+    require_dataset(service)
     return service.dataset[:n]
 
 
 @router.get("/dataset/info")
 def dataset_info(service: ModelService):
+    require_dataset(service)
     return info_dataset(service.dataset)
 
 
 @router.get("/dataset/split-info")
 def split_info(service: ModelService):
+    require_dataset(service)
     split: PreparedDataset | None = service.split
     if split is None:
         raise HTTPException(status_code=503, detail="Dataset is empty")
@@ -74,7 +82,8 @@ def train_model(
     service: ModelService,
     config: TrainingConfigChurn | None = None,
 ):
-    if not service.dataset or service.split is None:
+    require_dataset(service)
+    if service.split is None:
         raise HTTPException(status_code=503, detail="Dataset is empty or unavailable")
 
     try:

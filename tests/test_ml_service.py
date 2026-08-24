@@ -45,7 +45,7 @@ def make_dataset(size: int = 40) -> list[DatasetRowChurn]:
 
 
 def make_service(tmp_path, dataset: list[DatasetRowChurn]) -> ChurnModelService:
-    split = prepare_dataset(dataset)
+    split = prepare_dataset(dataset) if dataset else None
     return ChurnModelService(
         dataset=dataset,
         split=split,
@@ -121,6 +121,16 @@ def test_load_dataset_converts_empty_features_to_missing_values(tmp_path):
 
     assert row.monthly_fee is None
     assert row.region is None
+
+
+def test_load_missing_dataset_returns_empty_list(tmp_path, caplog):
+    missing_path = tmp_path / "missing.csv"
+
+    with caplog.at_level(logging.WARNING, logger="ml.dataset"):
+        dataset = load_dataset(missing_path)
+
+    assert dataset == []
+    assert "Dataset file not found" in caplog.text
 
 
 def test_model_repository_saves_and_loads_bundle(tmp_path):
