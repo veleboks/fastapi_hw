@@ -23,9 +23,9 @@ from schemas import (
 
 
 def make_dataset(size: int = 40) -> list[DatasetRowChurn]:
-    regions = ["north", "south", "west", "east"]
-    devices = ["mobile", "desktop"]
-    payments = ["card", "cash", "transfer"]
+    regions = ["europe", "asia", "america", "africa"]
+    devices = ["mobile", "desktop", "tablet"]
+    payments = ["card", "paypal", "crypto"]
     return [
         DatasetRowChurn(
             monthly_fee=30.0 + index,

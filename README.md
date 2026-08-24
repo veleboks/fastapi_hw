@@ -44,7 +44,7 @@ curl -X POST http://localhost:8000/predict \
     "support_requests":2,
     "account_age_months":18,
     "failed_payments":0,
-    "region":"north",
+    "region":"europe",
     "device_type":"mobile",
     "payment_method":"card",
     "autopay_enabled":1

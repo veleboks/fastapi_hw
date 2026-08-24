@@ -7,6 +7,18 @@ from api.routes import router
 from core.dependencies import get_model_service
 from core.exceptions import register_exception_handlers
 
+VALID_FEATURES = {
+    "monthly_fee": 49.9,
+    "usage_hours": 120.0,
+    "support_requests": 2,
+    "account_age_months": 18,
+    "failed_payments": 0,
+    "region": "europe",
+    "device_type": "mobile",
+    "payment_method": "card",
+    "autopay_enabled": 1,
+}
+
 
 @pytest.fixture
 def client(tmp_path):
@@ -37,17 +49,7 @@ def test_training_status_and_prediction_flow(client):
 
     prediction_response = client.post(
         "/predict",
-        json={
-            "monthly_fee": 49.9,
-            "usage_hours": 120.0,
-            "support_requests": 2,
-            "account_age_months": 18,
-            "failed_payments": 0,
-            "region": "north",
-            "device_type": "mobile",
-            "payment_method": "card",
-            "autopay_enabled": 1,
-        },
+        json=VALID_FEATURES,
     )
     body = prediction_response.json()
     assert prediction_response.status_code == 200
@@ -58,17 +60,7 @@ def test_training_status_and_prediction_flow(client):
 def test_prediction_without_training_returns_structured_error(client):
     response = client.post(
         "/predict",
-        json={
-            "monthly_fee": 49.9,
-            "usage_hours": 120.0,
-            "support_requests": 2,
-            "account_age_months": 18,
-            "failed_payments": 0,
-            "region": "north",
-            "device_type": "mobile",
-            "payment_method": "card",
-            "autopay_enabled": 1,
-        },
+        json=VALID_FEATURES,
     )
 
     assert response.status_code == 503
@@ -86,6 +78,24 @@ def test_predict_validation_error_has_common_format(client):
     assert response.json()["code"] == "VALIDATION_ERROR"
     assert response.json()["message"] == "Request validation failed"
     assert response.json()["details"]
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("region", "moon"),
+        ("device_type", "fridge"),
+        ("payment_method", "cash"),
+        ("autopay_enabled", 2),
+    ],
+)
+def test_predict_rejects_invalid_domain_values(client, field, value):
+    payload = {**VALID_FEATURES, field: value}
+
+    response = client.post("/predict", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "VALIDATION_ERROR"
 
 
 def test_model_schema_is_available(client):

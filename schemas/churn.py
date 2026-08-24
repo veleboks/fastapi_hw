@@ -5,6 +5,25 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class RegionChurn(str, Enum):
+    EUROPE = "europe"
+    ASIA = "asia"
+    AMERICA = "america"
+    AFRICA = "africa"
+
+
+class DeviceTypeChurn(str, Enum):
+    MOBILE = "mobile"
+    DESKTOP = "desktop"
+    TABLET = "tablet"
+
+
+class PaymentMethodChurn(str, Enum):
+    CARD = "card"
+    PAYPAL = "paypal"
+    CRYPTO = "crypto"
+
+
 class FeatureVectorChurn(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -16,7 +35,7 @@ class FeatureVectorChurn(BaseModel):
                     "support_requests": 2,
                     "account_age_months": 18,
                     "failed_payments": 0,
-                    "region": "north",
+                    "region": "europe",
                     "device_type": "mobile",
                     "payment_method": "card",
                     "autopay_enabled": 1,
@@ -30,10 +49,10 @@ class FeatureVectorChurn(BaseModel):
     support_requests: int
     account_age_months: int
     failed_payments: int
-    region: str
-    device_type: str
-    payment_method: str
-    autopay_enabled: int
+    region: RegionChurn
+    device_type: DeviceTypeChurn
+    payment_method: PaymentMethodChurn
+    autopay_enabled: int = Field(ge=0, le=1)
 
 
 class DatasetRowChurn(FeatureVectorChurn):
