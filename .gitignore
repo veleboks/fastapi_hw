@@ -1,7 +1,9 @@
 .DS_Store
 .idea/
 .vscode/
-data/
+data/*
+!data/.gitkeep
+!data/churn_dataset.csv
 
 .venv/
 __pycache__/
